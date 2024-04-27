@@ -21,6 +21,7 @@ package com.volmit.iris.core.commands;
 import com.volmit.iris.Iris;
 import com.volmit.iris.core.IrisSettings;
 import com.volmit.iris.core.loader.IrisData;
+import com.volmit.iris.core.pregenerator.ChunkUpdater;
 import com.volmit.iris.core.service.StudioSVC;
 import com.volmit.iris.core.tools.IrisBenchmarking;
 import com.volmit.iris.core.tools.IrisToolbelt;
@@ -37,6 +38,7 @@ import com.volmit.iris.util.decree.annotations.Decree;
 import com.volmit.iris.util.decree.annotations.Param;
 import com.volmit.iris.util.decree.specialhandlers.NullablePlayerHandler;
 import com.volmit.iris.util.format.C;
+import com.volmit.iris.util.format.Form;
 import com.volmit.iris.util.plugin.VolmitSender;
 import com.volmit.iris.util.scheduling.J;
 import lombok.Getter;
@@ -76,9 +78,9 @@ public class CommandIris implements DecreeExecutor {
     private CommandWhat what;
     private CommandEdit edit;
     private CommandFind find;
+    private CommandSupport support;
     private CommandDeveloper developer;
     public static boolean worldCreation = false;
-    String WorldToLoad;
     String WorldEngine;
     String worldNameToCheck = "YourWorldName";
     VolmitSender sender = Iris.getSender();
@@ -318,6 +320,24 @@ public class CommandIris implements DecreeExecutor {
         return dir.delete();
     }
 
+    @Decree(description = "Updates all chunk in the specified world")
+    public void updater(
+            @Param(description = "World to update chunks at")
+            World world
+    ) {
+        if (!IrisToolbelt.isIrisWorld(world)) {
+            sender().sendMessage(C.GOLD + "This is not an Iris world");
+            return;
+        }
+        ChunkUpdater updater = new ChunkUpdater(world);
+        if (sender().isPlayer()) {
+            sender().sendMessage(C.GREEN + "Updating " + world.getName() + " Total chunks: " + Form.f(updater.getChunks()));
+        } else {
+            Iris.info(C.GREEN + "Updating " + world.getName() + " Total chunks: " + Form.f(updater.getChunks()));
+        }
+        updater.start();
+    }
+
     @Decree(description = "Set aura spins")
     public void aura(
             @Param(description = "The h color value", defaultValue = "-20")
@@ -477,7 +497,7 @@ public class CommandIris implements DecreeExecutor {
             sender().sendMessage(C.YELLOW + world + " Doesnt exist on the server.");
             return;
         }
-        WorldToLoad = world;
+
         File BUKKIT_YML = new File("bukkit.yml");
         String pathtodim = world + File.separator +"iris"+File.separator +"pack"+File.separator +"dimensions"+File.separator;
         File directory = new File(Bukkit.getWorldContainer(), pathtodim);
@@ -513,9 +533,10 @@ public class CommandIris implements DecreeExecutor {
             } catch (IOException e) {
                 Iris.error("Failed to update bukkit.yml!");
                 e.printStackTrace();
+                return;
             }
         }
-        checkForBukkitWorlds();
+        checkForBukkitWorlds(world);
         sender().sendMessage(C.GREEN + world + " loaded successfully.");
     }
     @Decree(description = "Evacuate an iris world", origin = DecreeOrigin.PLAYER, sync = true)
@@ -536,7 +557,7 @@ public class CommandIris implements DecreeExecutor {
         File worldDirectory = new File(worldContainer, worldName);
         return worldDirectory.exists() && worldDirectory.isDirectory();
     }
-    private void checkForBukkitWorlds() {
+    private void checkForBukkitWorlds(String world) {
         FileConfiguration fc = new YamlConfiguration();
         try {
             fc.load(new File("bukkit.yml"));
@@ -545,9 +566,9 @@ public class CommandIris implements DecreeExecutor {
                 return;
             }
 
-            List<String> worldsToLoad = Collections.singletonList(WorldToLoad);
+            List<String> worldsToLoad = Collections.singletonList(world);
 
-            for (String s : section.getKeys(false)) {
+             for (String s : section.getKeys(false)) {
                 if (!worldsToLoad.contains(s)) {
                     continue;
                 }
