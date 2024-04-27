@@ -227,10 +227,15 @@ public class ChunkUpdater {
             }
         }
         while (!futures.isEmpty()) {
-            futures.removeIf(Future::isDone);
-            try {
-                Thread.sleep(50);
-            } catch (InterruptedException ignored) {}
+            var future = futures.remove(0);
+            if (future != null) {
+                try {
+                    future.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    futures.clear();
+                    return false;
+                }
+            }
         }
         return generated.get();
     }
